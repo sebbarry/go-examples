@@ -1,0 +1,4 @@
+github.com/gophercises/link v0.0.0-20190722124937-f605b2e9978a h1:rpzxcqOVxh3ZovY6lYi04U0UOhEy9u949c/oEulBACk=
+github.com/gophercises/link v0.0.0-20190722124937-f605b2e9978a/go.mod h1:n63lFrrYe9kwYBozpiLNqthsxPSLp8rz/q0jC53qpxo=
+golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd h1:O7DYs+zxREGLKzKoMQrtrEacpb0ZVXA5rIwylE2Xchk=
+golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd/go.mod h1:CfG3xpIq0wQ8r1q4Su4UZFWDARRcnwPjda9FqA0JpMk=
