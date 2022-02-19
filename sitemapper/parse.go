@@ -3,7 +3,7 @@ This is the same file that we used to build out the link parser for our previous
 **/
 
 
-package crawler
+package sitemap
 
 import (
 	"io"

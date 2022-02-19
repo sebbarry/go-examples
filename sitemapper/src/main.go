@@ -1,41 +1,72 @@
 package main
 
 import (
-    "io"
+	"encoding/xml"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
-	"crawler"
+	"sitemap"
 )
 
-    /*
-    1. GET the webpage
-    2. parse all thelinks on teh package. (package we made before)
-    3. build proper urls with our links.
-    4. filter out any links w/ a different domain (non domain specific)
-    5. find all the pages. (BFS)
-    6. print out xml.
-    */
+/*
+   1. GET the webpage
+   2. parse all thelinks on teh package. (package we made before)
+   3. build proper urls with our links.
+   4. filter out any links w/ a different domain (non domain specific)
+   5. find all the pages. (BFS)
+   6. print out xml.
+*/
+
+const xmlns = "http://www.sitemaps.org/schemas/sitemap/0.9"
+
+type loc struct {
+    Value string `xml:"loc"`
+}
+
+type urlset struct {
+    Urls []loc   `xml:"url"`
+    Xmlns string `xml:"xmlns,attr"`
+}
 
 func main() {
     //setup flags.
     urlFlag := flag.String("w", "https://google.com", "url we want to map")
     maxDepth := flag.Int("d", 3, "the depth of search we need")
+
     flag.Parse()
 
+    //get pages.
     pages := bfs(*urlFlag, *maxDepth)
-    for _, page := range(pages) {
-        fmt.Println(page)
+
+    //create an xml source
+    toXml := urlset{
+        Xmlns: xmlns,
     }
 
+    for _, page := range pages {
+        toXml.Urls = append(toXml.Urls, loc{page})
+    }
 
+    fmt.Print(xml.Header)
+
+    enc := xml.NewEncoder(os.Stdout) //write to an encoder output
+    enc.Indent("", " ")
+    if err := enc.Encode(toXml); err != nil {
+        panic(err)
+    }
+    fmt.Println()
 }
 
 
 
+/*
+This is the main bfs function that we want to use to build our sitemap 
+*/
 func bfs(url string, base int) []string {
     //the seen map will store the url's we've already seen. typical bfs
     //we use an empty struct here to designate no value and only a key.
@@ -53,7 +84,8 @@ func bfs(url string, base int) []string {
                 continue
             }
             seen[curUrl] = struct{}{} //mark it as seen.
-            for _, link := range get(curUrl) {
+            for _, link := range get(curUrl) { //loop through all the rest 
+                //of the links and add them to the queue.
                 nq[link] = struct{}{}
             }
         }
@@ -126,12 +158,11 @@ func get(urlStr string) []string {
 
 func hrefs(html io.Reader, base string) []string {
     //grab the links from the webpage received (parse the hrefs from the DOM)
-    links, _ := crawler.Parse(html)
+    links, _ := sitemap.Parse(html)
 
     //make slice of strings.
     var ret []string
     //loop through each link and cleanup the url.
-    fmt.Println(base)
     for _, l := range links {
         switch {
         case strings.HasPrefix(l.Href, "/"):
