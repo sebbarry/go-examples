@@ -16,22 +16,65 @@ import (
 	"github.com/gophercises/quiet_hn/hn"
 )
 
+
+
+//TYPES: 
+
+// item is the same as the hn.Item, but adds the Host field
+type item struct {
+	hn.Item
+	Host string
+}
+
+type templateData struct {
+	Stories []item
+	Time    time.Duration
+}
+
+type result struct {
+    idx int //keep track of the index as we queue them up.
+    item item
+    err error
+}
+
+type storyCache struct {
+    numStories int
+    cache      []item
+    expiration time.Time
+    duration   time.Duration
+    mutex      sync.Mutex
+}
+
+//global vars.
+var (
+    cache           []item
+    cacheExpiration time.Time
+    cacheMutex      sync.Mutex
+)
+
+//END Types
+
 func main() {
 	// parse flags
 	var port, numStories int
 	flag.IntVar(&port, "port", 3000, "the port to start the web server on")
+    //grab the number of stories we want ot acquire for the page.
 	flag.IntVar(&numStories, "num_stories", 30, "the number of top stories to display")
 	flag.Parse()
 
 	tpl := template.Must(template.ParseFiles("./index.gohtml")) //make a tepmlate to render
 
-	http.HandleFunc("/", handler(numStories, tpl))
+	http.HandleFunc("/", handler(numStories, tpl)) //pass the template and 
+    //the number of storeis to our handler.
 
 	// Start the server
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }
 
 
+/*
+This handles our / route. 
+*/
 func handler(numStories int, tpl *template.Template) http.HandlerFunc {
 
     sc := storyCache{
@@ -39,17 +82,18 @@ func handler(numStories int, tpl *template.Template) http.HandlerFunc {
         duration: 3 * time.Second,
     }
 
+    //make sure to start this go routine whenever we call our handler.
     go func () {
         /*
         when this ticker goes off, go and populate whatever the cache should be.
         */
-        ticker := time.NewTicker(3 * time.Second)
-        for {
+        ticker := time.NewTicker(3 * time.Second) //make a new ticker.
+        for { //start while loop.
             temp := storyCache{
                 numStories: numStories,
                 duration: 6 * time.Second,
             }
-            temp.stories()
+            temp.stories() //handle querying the stories.
             //lock the mutex 
             sc.mutex.Lock()
             //update the cache
@@ -59,7 +103,7 @@ func handler(numStories int, tpl *template.Template) http.HandlerFunc {
             //unlock the mutex
             sc.mutex.Unlock()
             //
-            <-ticker.C
+            <-ticker.C //output the channel time
         }
     }()
 
@@ -84,14 +128,6 @@ func handler(numStories int, tpl *template.Template) http.HandlerFunc {
 }
 
 
-type storyCache struct {
-    numStories int
-    cache      []item
-    expiration time.Time
-    duration   time.Duration
-    mutex      sync.Mutex
-}
-
 
 func (sc *storyCache) stories() ([]item, error){ //make sure to always pass the story cache as a pointer to ensure unique
     sc.mutex.Lock()
@@ -109,11 +145,6 @@ func (sc *storyCache) stories() ([]item, error){ //make sure to always pass the 
     return sc.cache, nil
 }
 
-var (
-    cache           []item
-    cacheExpiration time.Time
-    cacheMutex      sync.Mutex
-)
 
 
 
@@ -138,12 +169,9 @@ func getTopStories(numStories int) ([]item, error) {
 
 
 func getStories(ids []int) []item {
-    type result struct {
-        idx int //keep track of the index as we queue them up.
-        item item
-        err error
-    }
+    //had type result struct here.
     resultCh := make(chan result) //generate a channel with a result type
+
 
     //want := numStories * 5/4 //define the exact number of stories that we want.
 
@@ -191,15 +219,4 @@ func parseHNItem(hnItem hn.Item) item {
 		ret.Host = strings.TrimPrefix(url.Hostname(), "www.")
 	}
 	return ret
-}
-
-// item is the same as the hn.Item, but adds the Host field
-type item struct {
-	hn.Item
-	Host string
-}
-
-type templateData struct {
-	Stories []item
-	Time    time.Duration
 }
